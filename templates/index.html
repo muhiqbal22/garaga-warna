@@ -12,6 +12,8 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='style/webflow.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='style/them.css') }}">    
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style/style.css') }}">
+
     <script src="https://code.jquery.com/jquery-3.3.1.min.js"></script>
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
     <script src="{{ url_for('static', filename='js/track.js') }}"></script>
@@ -82,8 +84,8 @@
                   <a class="nav-link w-nav-link" href="#about">About</a>
                   <a class="nav-link w-nav-link" href="#Images">Images</a>
                   <a class="nav-link w-nav-link" href="#color">ColorPicker</a>
-                  <a class="nav-link w-nav-link" href="#Info">MoreInfo</a>
-              </nav>
+                  <a class="nav-link w-nav-link" href="{{ url_for('realtime') }}">RealTime</a>
+                </nav>
               <div class="menu-button w-nav-button">
                   <div class="w-icon-nav-menu"></div>
               </div>
@@ -212,32 +214,26 @@
               </div>
           </article>
       </main>
-      <main class="container w-container">
-        <article class="both-top-and-bottom container w-container">
-            <div class="w-row" id="color"></div>
-            <div class="heading-box">
-                <h2 class="sub-heading">Color Detection</h2>
-            </div>
-            <div class="container mt-2">
-                <div class="row">
-                    <div class="col-12 offset-lg-1 col-lg-7 col-md-6">
-                        <!-- Form untuk upload gambar -->
-                        <form action="{{ url_for('predict') }}" method="post" enctype="multipart/form-data" id="uploadForm">
-                            <label for="file">Choose an image:</label>
-                            <input type="file" id="file" name="file" accept="image/*" required>
-                            <br><br>
-                            <button type="submit" class="btn btn-primary">Upload and Detect</button>
-                        </form>
-                        <h2 id="result"></h2>
-                        <!-- Placeholder for displaying uploaded image -->
-                        <div id="imageContainer"></div>
-                        <h3 id="colorResult"></h3>
-                    </div>
-                </div>
-            </div>
-        </article>
-    </main>
-
+      
+      <article class="bg container w-container" id="Images">
+        <div class="heading-box">
+            <div class="small-blue-heading">Detect Image</div>
+            <h2 class="sub-heading">Color Detection</h2>
+        </div>
+        <!-- Form untuk upload gambar -->
+        <form action="{{ url_for('predict_color') }}" method="post" enctype="multipart/form-data" id="uploadForm">
+            <label for="file">Choose an image:</label>
+            <input type="file" id="file" name="file" accept="image/*" required>
+            <br><br>
+            <button type="submit" class="btn btn-primary">Detect</button>
+        </form>
+        <h2 id="result"></h2>
+        <!-- Placeholder for displaying uploaded image -->
+        <div id="imageContainer"></div>
+        <h3 id="colorResult"></h3>
+        <div class="middle-line" data-ix="float-in-on-scroll-3"></div>
+    </article>
+    
     <!-- Contact Section -->
     <div class="contact-bg">
         <article class="centered container w-container">
@@ -276,6 +272,33 @@
             </div>
         </address>
     </div>
+
+    <div class="container">
+        <div class="my-chatbox">
+            <div class="my-chatbox__support">
+                <div class="my-chatbox__header">
+                    <div class="my-chatbox__image--header">
+                        <img src="https://img.icons8.com/color/48/000000/circled-user-female-skin-type-5--v1.png" alt="image">
+                    </div>
+                    <div class="my-chatbox__content--header">
+                        <h4 class="my-chatbox__heading--header">Chat support</h4>
+                        <p class="my-chatbox__description--header">Hi, mau rekomendasi warna apa?</p>
+                    </div>
+                </div>
+                <div class="my-chatbox__messages">
+                    <div></div>
+                </div>
+                <div class="my-chatbox__footer">
+                    <input type="text" placeholder="Write a message...">
+                    <button class="my-chatbox__send--footer my-send__button">Send</button>
+                </div>
+            </div>
+            <div class="my-chatbox__button">
+                <button><img src="{{ url_for('static', filename='images/chatbox-icon.svg') }}" /></button>
+            </div>
+        </div>
+    </div>
+    
   <footer class="section">
     <footer class="both-top-and-bottom centered container w-container">
         <a href="index.html">
@@ -285,28 +308,50 @@
         </a>
     </footer>
 </footer>
+
 <script>
-  document.getElementById('uploadForm').addEventListener('submit', async function(event) {
-      event.preventDefault();
-      
-      let formData = new FormData();
-      formData.append('file', document.getElementById('file').files[0]);
-      
-      let response = await fetch('/predict', {
-          method: 'POST',
-          body: formData
-      });
-      
-      let result = await response.json();
-      
-      // Display predicted color
-      document.getElementById('colorResult').textContent = `Predicted Color: ${result.predicted_color}`;
-      
-      // Display image
-      let imageContainer = document.getElementById('imageContainer');
-      imageContainer.innerHTML = `<img src="${result.image}" alt="Uploaded Image" style="max-width: 100%;">`;
-  });
+    $SCRIPT_ROOT = {{ request.script_root|tojson }};
 </script>
+<script>
+    document.getElementById('uploadForm').addEventListener('submit', async function(event) {
+        event.preventDefault();
+        
+        let formData = new FormData();
+        formData.append('file', document.getElementById('file').files[0]);
+        
+        let response = await fetch('/predict_color', {
+            method: 'POST',
+            body: formData
+        });
+        
+        let result = await response.json();
+        
+        document.getElementById('colorResult').textContent = `Predicted Color: ${result.predicted_color}`;
+        
+        let imageContainer = document.getElementById('imageContainer');
+        imageContainer.innerHTML = `<img src="${result.image}" alt="Uploaded Image" style="max-width: 100%;">`;
+    });
+
+    document.querySelector('.my-send__button').addEventListener('click', async () => {
+        const input = document.querySelector('.my-chatbox__footer input');
+        const message = input.value;
+        const response = await fetch('/predict_chat', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ message }),
+        });
+        const result = await response.json();
+        if (result.answer) {
+            const messagesContainer = document.querySelector('.my-chatbox__messages > div');
+            messagesContainer.innerHTML += `<div class="my-messages__item my-messages__item--visitor">${message}</div>`;
+            messagesContainer.innerHTML += `<div class="my-messages__item my-messages__item--support">${result.answer}</div>`;
+            input.value = '';
+        }
+    });
+</script>
+<script src="{{ url_for('static', filename='js/app.js') }}"></script>
 <script src="{{ url_for('static', filename='js/slider.js') }}"></script>
 <script src="{{ url_for('static', filename='js/trackColor.js') }}"></script>
 </body>

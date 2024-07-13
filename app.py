@@ -5,6 +5,12 @@ import torch.nn as nn
 import torchvision.transforms as transforms
 import io
 import base64
+import random
+import json
+import numpy as np
+from model import NeuralNet
+from nltk_utils import bag_of_words, tokenize
+from chat import get_response
 
 app = Flask(__name__)
 
@@ -23,9 +29,9 @@ class_names = {
     11: 'grey'
 }
 
-num_labels = 12  # Replace this with the actual number of classes
+num_labels = 12
 
-# Define the model architecture
+# Define the model architecture for color classification
 class ColorClassifier(nn.Module):
     def __init__(self):
         super(ColorClassifier, self).__init__()
@@ -74,11 +80,11 @@ class ColorClassifier(nn.Module):
         x = self.fc3(x)
         return x
 
-# Load the pre-trained model
-model = ColorClassifier()
+# Load the pre-trained color classification model
+color_model = ColorClassifier()
 state_dict = torch.load("color_classifier.pth", map_location=torch.device('cpu'))
-model.load_state_dict(state_dict)
-model.eval()
+color_model.load_state_dict(state_dict)
+color_model.eval()
 
 # Define the image preprocessing
 preprocess = transforms.Compose([
@@ -91,8 +97,12 @@ preprocess = transforms.Compose([
 def index():
     return render_template('index.html')
 
-@app.route('/predict', methods=['POST'])
-def predict():
+@app.route('/realtime')
+def realtime():
+    return render_template('realtime.html')
+
+@app.route('/predict_color', methods=['POST'])
+def predict_color():
     if 'file' not in request.files:
         return jsonify({'error': 'No file provided'}), 400
 
@@ -107,17 +117,15 @@ def predict():
         img = img.unsqueeze(0)  # Add batch dimension
 
         with torch.no_grad():
-            outputs = model(img)
+            outputs = color_model(img)
             _, predicted = torch.max(outputs, 1)
             predicted_class = predicted.item()
 
-        # Get the class name from class_names dictionary
         if predicted_class in class_names:
             predicted_color = class_names[predicted_class]
         else:
             predicted_color = 'unknown'
 
-        # Convert PIL image to base64 encoded string for display in HTML
         img_byte_arr = io.BytesIO()
         img_original.save(img_byte_arr, format='JPEG')
         img_byte_arr = img_byte_arr.getvalue()
@@ -128,6 +136,20 @@ def predict():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
+@app.post("/predict_chat")
+def predict_chat():
+    text = request.get_json().get("message")
+    
+    try:
+        np_version = np.__version__
+        print(f"NumPy version: {np_version}")
+    except Exception as e:
+        print(f"NumPy is not available: {e}")
+        return jsonify({"answer": "Error: NumPy is not available."})
+    
+    response = get_response(text)
+    message = {"answer": response}
+    return jsonify(message)
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     app.run(debug=True)
