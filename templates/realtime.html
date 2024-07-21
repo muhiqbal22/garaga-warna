@@ -1,80 +1,31 @@
 <!DOCTYPE html>
 <html>
 <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Color Detection</title>
-    <style>
-        body {
-            background-color: #ffffff;
-        }
-        .navbar {
-            background-color: #EEE0C9;
-            border-bottom: 2px solid #000;
-            padding: 10px;
-            color: #000;
-            text-align: center;
-        }
-        .split-container {
-            display: flex;
-            justify-content: space-between;
-            padding: 20px;
-        }
-        .split-pane {
-            flex: 1;
-            padding: 10px;
-            border: 1px solid #ccc;
-            margin: 10px;
-        }
-        .text-content {
-            margin-top: 10px;
-        }
-        .bold {
-            font-weight: bold;
-        }
-        .button {
-            display: block;
-            padding: 10px 20px;
-            background-color: #A7D397;
-            color: #fff;
-            text-align: center;
-            text-decoration: none;
-            border-radius: 5px;
-            margin-top: 10px;
-        }
-        #canvas {
-            background-color: #ADC4CE; /* Grey color */
-        }
-        #video {
-            background-color: #ADC4CE; /* Grey color */
-        }
-    </style>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style/realtime.css') }}">
 </head>
 <body>
-    <div class="navbar">
-        <h1>Color Detection</h1>
-        <a href="{{ url_for('index') }}" class='button'>Back</a>
-
-    </div>
-    <div class="split-container">
-        <div class='split-pane'>
-            <div class='split-pane-content uiux-side'>
+    <div class="container">
+        <div class="navbar">
+            <h1>Color Detection</h1>
+            <a href="{{ url_for('index') }}" class="button">Back</a>
+        </div>
+        <div class="split-container">
+            <div class="split-pane">
                 <video id="video" width="1000" height="500" autoplay></video>
-                <div class='text-content'>
-                    <div class="bold">Detected Color</div>
-                </div>
-                <button id="colorLabel">Colors: N/A</button>
-            </div>
-        </div>
-        <div class='split-pane'>
-            <div class='split-pane-content frontend-side'>
-                <canvas id="canvas" width="800" height="500"></canvas>
-                <div class='text-content'>
-                    <div class="bold">Color Rectangle</div>
+                <div class="text-content">
+                    <div class="bold" id="detectedColorLabel">Detected Color</div>
+                    <button id="colorLabel" class="ouput">Colors: N/A</button>
                 </div>
             </div>
         </div>
     </div>
+    
+    <!-- Move the canvas element outside of the split-pane -->
+    <canvas id="canvas" width="800" height="500"></canvas>
 
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/tracking.js/1.1.3/tracking-min.js"></script>
     <script>
         // Get access to the camera
         if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
@@ -85,129 +36,78 @@
             });
         }
 
-        // Register custom colors
-    tracking.ColorTracker.registerColor('red', function(r, g, b) {
-        return r > 150 && g < 100 && b < 100;
-    });
+        // Function to capture frame and send to Flask server for color prediction
+        function captureFrame() {
+            var canvas = document.getElementById('canvas');
+            var context = canvas.getContext('2d');
+            var video = document.getElementById('video');
 
-    tracking.ColorTracker.registerColor('green', function(r, g, b) {
-        return r < 100 && g > 150 && b < 100;
-    });
+            context.drawImage(video, 0, 0, canvas.width, canvas.height);
 
-    tracking.ColorTracker.registerColor('magenta', function(r, g, b) {
-        return r > 200 && g < 100 && b > 150;
-    });
+            var dataURL = canvas.toDataURL('image/jpeg');
 
-    tracking.ColorTracker.registerColor('cyan', function(r, g, b) {
-        return r < 100 && g > 150 && b > 150;
-    });
-
-    tracking.ColorTracker.registerColor('yellow', function(r, g, b) {
-        return r > 200 && g > 200 && b < 100;
-    });
-
-    tracking.ColorTracker.registerColor('black', function(r, g, b) {
-        return r < 50 && g < 50 && b < 50;
-    });
-
-    tracking.ColorTracker.registerColor('white', function(r, g, b) {
-        return r > 200 && g > 200 && b > 200;
-    });
-
-    tracking.ColorTracker.registerColor('blue', function(r, g, b) {
-        return r < 100 && g < 100 && b > 150;
-    });
-
-    tracking.ColorTracker.registerColor('orange', function(r, g, b) {
-        return r > 200 && g > 100 && b < 50;
-    });
-
-    tracking.ColorTracker.registerColor('brown', function(r, g, b) {
-        return r > 90 && r < 150 && g > 40 && g < 100 && b < 40;
-    });
-
-    tracking.ColorTracker.registerColor('purple', function(r, g, b) {
-        return r > 100 && g < 50 && b > 100;
-    });
-
-    tracking.ColorTracker.registerColor('pink', function(r, g, b) {
-        return r > 200 && g > 100 && b > 150;
-    });
-
-    tracking.ColorTracker.registerColor('lime', function(r, g, b) {
-        return r < 150 && g > 200 && b < 150;
-    });
-
-    tracking.ColorTracker.registerColor('navy', function(r, g, b) {
-        return r < 50 && g < 50 && b > 100;
-    });
-
-    tracking.ColorTracker.registerColor('teal', function(r, g, b) {
-        return r < 100 && g > 100 && b > 100;
-    });
-
-    tracking.ColorTracker.registerColor('olive', function(r, g, b) {
-        return r > 100 && r < 150 && g > 100 && g < 150 && b < 100;
-    });
-
-    tracking.ColorTracker.registerColor('maroon', function(r, g, b) {
-        return r > 100 && r < 150 && g < 50 && b < 50;
-    });
-
-    tracking.ColorTracker.registerColor('silver', function(r, g, b) {
-        return r > 150 && g > 150 && b > 150 && r < 200 && g < 200 && b < 200;
-    });
-
-    tracking.ColorTracker.registerColor('gold', function(r, g, b) {
-        return r > 200 && g > 150 && b < 50;
-    });
-
-    tracking.ColorTracker.registerColor('beige', function(r, g, b) {
-        return r > 200 && g > 200 && b > 150 && r < 250 && g < 250 && b < 200;
-    });
-
-    tracking.ColorTracker.registerColor('coral', function(r, g, b) {
-        return r > 200 && g > 100 && g < 150 && b < 100;
-    });
-
-    tracking.ColorTracker.registerColor('turquoise', function(r, g, b) {
-        return r < 100 && g > 150 && b > 150 && b < 200;
-    });
-
-    // Create a color tracker
-    var colorTracker = new tracking.ColorTracker([
-        'red', 'green', 'magenta', 'cyan', 'yellow', 'black', 'white', 'blue', 
-        'orange', 'brown', 'purple', 'pink', 'lime', 'navy', 'teal', 'olive', 
-        'maroon', 'silver', 'gold', 'beige', 'coral', 'turquoise'
-    ]);
-
-    // Add a listener for color tracking events
-    colorTracker.on('track', function(event) {
-        var canvas = document.getElementById('canvas');
-        var context = canvas.getContext('2d');
-        context.clearRect(0, 0, canvas.width, canvas.height);
-
-        if (event.data.length === 0) {
-            // No colors were detected in this frame
-        } else {
-            var colorsDetected = [];
-            event.data.forEach(function(rect) {
-                colorsDetected.push(rect.color);
-
-                // Draw a rectangle around the detected color
-                context.strokeStyle = rect.color;
-                context.strokeRect(rect.x, rect.y, rect.width, rect.height);
-
-                // Label the rectangle with the color name
-                context.fillStyle = rect.color;
-                context.fillText(rect.color, rect.x, rect.y > 10 ? rect.y - 5 : 10);
+            fetch('/predict_frame', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ image: dataURL }),
+            })
+            .then(response => response.json())
+            .then(data => {
+                document.getElementById('colorLabel').innerText = 'Color: ' + data.predicted_color;
+                document.getElementById('detectedColorLabel').innerText = 'Detected Color';
+                drawBoundingBox(data.predicted_color);
+            })
+            .catch(error => {
+                console.error('Error:', error);
             });
-            document.getElementById('colorLabel').textContent = 'Colors: ' + colorsDetected.join(', ');
         }
-    });
 
-    // Start tracking colors in the video
-    tracking.track('#video', colorTracker);
-</script>
+        // Function to draw bounding box around detected color
+        function drawBoundingBox(detectedColor) {
+            var canvas = document.getElementById('canvas');
+            var context = canvas.getContext('2d');
+            var imageData = context.getImageData(0, 0, canvas.width, canvas.height);
+            var data = imageData.data;
+
+            context.strokeStyle = 'red';
+            context.lineWidth = 2;
+
+            // Simple color thresholding to detect object based on the predicted color
+            var colorThreshold = 50;
+            var bounds = { x1: canvas.width, y1: canvas.height, x2: 0, y2: 0 };
+
+            for (var y = 0; y < canvas.height; y++) {
+                for (var x = 0; x < canvas.width; x++) {
+                    var index = (y * canvas.width + x) * 4;
+                    var r = data[index];
+                    var g = data[index + 1];
+                    var b = data[index + 2];
+
+                    // Adjust the color detection condition based on your needs
+                    if (detectedColor === 'red' && r > 200 && g < 100 && b < 100) {
+                        bounds.x1 = Math.min(bounds.x1, x);
+                        bounds.y1 = Math.min(bounds.y1, y);
+                        bounds.x2 = Math.max(bounds.x2, x);
+                        bounds.y2 = Math.max(bounds.y2, y);
+                    }
+                    // Add more conditions for other colors as needed
+                }
+            }
+
+            // Log the bounds for debugging
+            console.log('Bounds:', bounds);
+
+            if (bounds.x2 > bounds.x1 && bounds.y2 > bounds.y1) {
+                context.strokeRect(bounds.x1, bounds.y1, bounds.x2 - bounds.x1, bounds.y2 - bounds.y1);
+            } else {
+                console.log('No object detected with the color:', detectedColor);
+            }
+        }
+
+        // Set interval to capture frame every second
+        setInterval(captureFrame, 1000);
+    </script>
 </body>
 </html>

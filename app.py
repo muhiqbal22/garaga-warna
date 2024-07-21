@@ -5,12 +5,8 @@ import torch.nn as nn
 import torchvision.transforms as transforms
 import io
 import base64
-import random
-import json
 import numpy as np
 from model import NeuralNet
-from nltk_utils import bag_of_words, tokenize
-from chat import get_response
 
 app = Flask(__name__)
 
@@ -132,6 +128,31 @@ def predict_color():
         img_str = 'data:image/jpeg;base64,' + base64.b64encode(img_byte_arr).decode('utf-8')
 
         return jsonify({'predicted_class': predicted_class, 'predicted_color': predicted_color, 'image': img_str})
+
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/predict_frame', methods=['POST'])
+def predict_frame():
+    try:
+        data = request.get_json()
+        image_data = data['image']
+        image_data = base64.b64decode(image_data.split(',')[1])
+        img = Image.open(io.BytesIO(image_data)).convert('RGB')
+        img = preprocess(img)
+        img = img.unsqueeze(0)  # Add batch dimension
+
+        with torch.no_grad():
+            outputs = color_model(img)
+            _, predicted = torch.max(outputs, 1)
+            predicted_class = predicted.item()
+
+        if predicted_class in class_names:
+            predicted_color = class_names[predicted_class]
+        else:
+            predicted_color = 'unknown'
+
+        return jsonify({'predicted_color': predicted_color})
 
     except Exception as e:
         return jsonify({'error': str(e)}), 500
