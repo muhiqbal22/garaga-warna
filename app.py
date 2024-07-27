@@ -1,11 +1,14 @@
-from flask import Flask, request, jsonify, render_template
+from flask import Flask, request, jsonify, render_template, render_template_string
 from PIL import Image
 import torch
 import torch.nn as nn
 import torchvision.transforms as transforms
+import pandas as pd
+import joblib
 import io
 import base64
 import numpy as np
+from chat import get_response
 from model import NeuralNet
 
 app = Flask(__name__)
@@ -82,6 +85,47 @@ state_dict = torch.load("color_classifier.pth", map_location=torch.device('cpu')
 color_model.load_state_dict(state_dict)
 color_model.eval()
 
+# Load models and scaler
+with open('color_combination_model.pkl', 'rb') as f:
+    color_combination_model = joblib.load(f)
+
+with open('scaler.pkl', 'rb') as f:
+    scaler = joblib.load(f)
+
+# Load color data
+colors_df = pd.read_csv('colors.csv')
+
+def get_color_recommendations(input_rgb, n_recommendations=5):
+    distances = np.sqrt((colors_df[['r', 'g', 'b']] - input_rgb) ** 2).sum(axis=1)
+    nearest_indices = distances.nsmallest(n_recommendations).index
+    recommended_colors = colors_df.loc[nearest_indices]
+    return recommended_colors
+
+def get_rgb_from_color_name(color_name):
+    color_row = colors_df[colors_df['color_name'].str.lower() == color_name.lower()]
+    if not color_row.empty:
+        return color_row[['r', 'g', 'b']].values[0]
+    else:
+        return None
+
+def predict_color_combination(color1_name, color2_name):
+    color1_rgb = get_rgb_from_color_name(color1_name)
+    color2_rgb = get_rgb_from_color_name(color2_name)
+    if color1_rgb is not None and color2_rgb is not None:
+        color1_rgb_scaled = np.array([color1_rgb]).reshape(1, -1)
+        color2_rgb_scaled = np.array([color2_rgb]).reshape(1, -1)
+        X_input = np.hstack((color1_rgb_scaled, color2_rgb_scaled))
+        X_input_scaled = scaler.transform(X_input)
+        prediction = color_combination_model.predict(X_input_scaled)
+        return np.round(prediction[0]).astype(int)
+    else:
+        return None
+
+def get_color_name_from_rgb(rgb):
+    distances = np.sqrt((colors_df[['r', 'g', 'b']] - rgb) ** 2).sum(axis=1)
+    nearest_color = colors_df.loc[distances.idxmin()]
+    return nearest_color['color_name']
+
 # Define the image preprocessing
 preprocess = transforms.Compose([
     transforms.Resize((224, 224)),
@@ -91,7 +135,8 @@ preprocess = transforms.Compose([
 
 @app.route('/')
 def index():
-    return render_template('index.html')
+    color_names = colors_df['color_name'].tolist()
+    return render_template('index.html', color_names=color_names)
 
 @app.route('/realtime')
 def realtime():
@@ -171,6 +216,45 @@ def predict_chat():
     response = get_response(text)
     message = {"answer": response}
     return jsonify(message)
+
+@app.route('/recommend', methods=['POST'])
+def recommend():
+    color_name = request.form.get('color_name')
+    input_rgb = get_rgb_from_color_name(color_name)
+    if input_rgb is not None:
+        recommended_colors = get_color_recommendations(input_rgb)
+        return render_template_string(
+            '{% if recommend_results %}<h3>Recommended Colors for {{ selected_color_name }}</h3><ul>{% for color in recommend_results %}<li>{{ color["color_name"] }} ({{ color["color_code"] }})</li>{% endfor %}</ul>{% endif %}',
+            recommend_results=recommended_colors.to_dict(orient='records'),
+            selected_color_name=color_name
+        )
+    else:
+        return render_template_string(
+            '<h3>Error</h3><p>Color not found. Please try again.</p>'
+        ), 400
+
+@app.route('/predict_combination', methods=['POST'])
+def predict_combination():
+    color1_name = request.form.get('color1_name')
+    color2_name = request.form.get('color2_name')
+    combination_rgb = predict_color_combination(color1_name, color2_name)
+    if combination_rgb is not None:
+        combination_color_name = get_color_name_from_rgb(combination_rgb)
+        return render_template_string(
+            '{% if combination_results %}<h3>Color Combination Result</h3><p><strong>First Color:</strong> {{ combination_results.color1 }}</p><p><strong>Second Color:</strong> {{ combination_results.color2 }}</p><p><strong>Combined Color RGB:</strong> ({{ combination_results.combination_rgb[0] }}, {{ combination_results.combination_rgb[1] }}, {{ combination_results.combination_rgb[2] }})</p><p><strong>Combined Color Hex:</strong> {{ combination_results.combination_color_hex }}</p><p><strong>Combined Color Name:</strong> {{ combination_results.combination_color_name }}</p>{% endif %}',
+            combination_results={
+                'color1': color1_name,
+                'color2': color2_name,
+                'combination_rgb': combination_rgb,
+                'combination_color_name': combination_color_name,
+                'combination_color_hex': '#{:02x}{:02x}{:02x}'.format(combination_rgb[0], combination_rgb[1], combination_rgb[2])
+            }
+        )
+    else:
+        return render_template_string(
+            '<h3>Error</h3><p>One or both colors not found. Please try again.</p>'
+        ), 400
+
 
 if __name__ == "__main__":
     app.run(debug=True)

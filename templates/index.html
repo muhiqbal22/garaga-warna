@@ -16,6 +16,7 @@
 
     <script src="https://code.jquery.com/jquery-3.3.1.min.js"></script>
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
     <script src="{{ url_for('static', filename='js/track.js') }}"></script>
     <script src="{{ url_for('static', filename='js/pickColor.js') }}"></script>
     <script src="{{ url_for('static', filename='js/slideRange.js') }}"></script>
@@ -218,8 +219,54 @@
       <article class="bg container w-container" id="Images">
         <div class="heading-box">
             <div class="small-blue-heading">Detect Image</div>
-            <h2 class="sub-heading">Color Detection</h2>
-        </div>
+            <h2 class="sub-heading">Color Detection and Prediction</h2>
+            <h2>Recommend Colors</h2>
+            <form id="recommend-form">
+                <label for="color_name">Enter color name:</label>
+                <input list="color_names" id="color_name" name="color_name" placeholder="e.g., Alice Blue">
+                <datalist id="color_names">
+                    {% for color in color_names %}
+                        <option value="{{ color }}">{{ color }}</option>
+                    {% endfor %}
+                </datalist>
+                <br>
+                <button type="submit">Recommend Colors</button>
+            </form>
+    
+            <div id="recommend-results">
+                <!-- Hasil rekomendasi warna akan muncul di sini -->
+            </div>
+    
+            <h2>Predict Color Combination</h2>
+            <form id="combination-form">
+                <label for="color1_name">Enter first color name:</label>
+                <input list="color_names" id="color1_name" name="color1_name" placeholder="e.g., Red">
+                <datalist id="color_names">
+                    {% for color in color_names %}
+                        <option value="{{ color }}">{{ color }}</option>
+                    {% endfor %}
+                </datalist>
+                <br>
+                <label for="color2_name">Enter second color name:</label>
+                <input list="color_names" id="color2_name" name="color2_name" placeholder="e.g., Green">
+                <datalist id="color_names">
+                    {% for color in color_names %}
+                        <option value="{{ color }}">{{ color }}</option>
+                    {% endfor %}
+                </datalist>
+                <br>
+                <button type="submit">Predict Combination</button>
+            </form>
+    
+            <div id="combination-results">
+                <!-- Hasil kombinasi warna akan muncul di sini -->
+            </div>
+    
+            <div id="error-message">
+                <!-- Pesan error akan muncul di sini -->
+            </div>
+    
+    
         <!-- Form untuk upload gambar -->
         <form action="{{ url_for('predict_color') }}" method="post" enctype="multipart/form-data" id="uploadForm">
             <label for="file">Choose an image:</label>
@@ -312,6 +359,39 @@
 <script>
     $SCRIPT_ROOT = {{ request.script_root|tojson }};
 </script>
+<script>
+    $(document).ready(function() {
+        $('#recommend-form').submit(function(event) {
+            event.preventDefault();
+            $.ajax({
+                type: 'POST',
+                url: '/recommend',
+                data: $(this).serialize(),
+                success: function(response) {
+                    $('#recommend-results').html(response);
+                },
+                error: function(error) {
+                    $('#error-message').html('<h3>Error</h3><p>' + error.responseText + '</p>');
+                }
+            });
+        });
+    
+        $('#combination-form').submit(function(event) {
+            event.preventDefault();
+            $.ajax({
+                type: 'POST',
+                url: '/predict_combination',
+                data: $(this).serialize(),
+                success: function(response) {
+                    $('#combination-results').html(response);
+                },
+                error: function(error) {
+                    $('#error-message').html('<h3>Error</h3><p>' + error.responseText + '</p>');
+                }
+            });
+        });
+    });
+    </script>
 <script>
     document.getElementById('uploadForm').addEventListener('submit', async function(event) {
         event.preventDefault();
